@@ -20,12 +20,49 @@ if (app.Environment.IsDevelopment())
 
 //Get all tasks
 app.MapGet("/tasks", async (AppDbContext db) => await db.Tasks.ToListAsync());
+
+//Get only one task, by it's id
+app.MapGet("/tasks/{id:int}", async (int id, AppDbContext db) => 
+    await db.Tasks.FindAsync(id) is Task task ? Results.Ok(task) : Results.NotFound()
+);
+
+//Get only finished tasks
+app.MapGet("/tasks/finished", async (AppDbContext db) => await db.Tasks.Where(t => t.IsFinished).ToListAsync());
+
 //Create a new task
 app.MapPost("/tasks", async(Task task, AppDbContext db) =>
 {
     db.Tasks.Add(task);
     await db.SaveChangesAsync();
     return Results.Created($"/tarefas/{task.Id}", task);
+});
+
+//Update existent task
+app.MapPut("/tasks/{id:int}", async (int id, Task InputTask, AppDbContext db) =>
+{
+    var task = await db.Tasks.FindAsync(id);
+    if (task is null)
+        return Results.NotFound("Task not found in the list.");
+
+    task.Name = InputTask.Name;
+    task.IsFinished = InputTask.IsFinished;
+    
+    await db.SaveChangesAsync();
+
+    return Results.NoContent();
+});
+
+//Delete existent task
+app.MapDelete("/tasks/{id:int}", async (int id, AppDbContext db) =>
+{
+    Task task = await db.Tasks.FindAsync(id);
+    if (task is null)
+        return Results.NotFound("Task not found in the list.");
+
+    db.Tasks.Remove(task);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(task);
 });
 
 app.UseHttpsRedirection();
